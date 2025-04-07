@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -58,8 +58,17 @@ export const Schedule: React.FC<ScheduleProps> = ({
     hour: string;
     activity: Activity;
   } | null>(null);
-  const [showCellText, setShowCellText] = useState<boolean>(true);
+  const [showCellText, setShowCellText] = useState(() => {
+    // Load preference from localStorage, default to true if not set
+    const savedPreference = localStorage.getItem('showActivityNames');
+    return savedPreference !== null ? savedPreference === 'true' : true;
+  });
   const scheduleRef = useRef<HTMLDivElement>(null);
+
+  // Save preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('showActivityNames', showCellText.toString());
+  }, [showCellText]);
 
   // Ensure we have valid weeks data
   if (!weeks || weeks.length === 0) {
@@ -82,16 +91,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
       </Box>
     );
   }
-
-  const schedule = currentWeek.schedule;
-
-  const getActivityById = (activityId: string): Activity | undefined => {
-    for (const pillar of pillars) {
-      const activity = pillar.activities.find((a) => a.id === activityId);
-      if (activity) return activity;
-    }
-    return undefined;
-  };
 
   const handleCellClick = (day: string, hour: string) => {
     // Check if the cell already has an activity
@@ -229,18 +228,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
     setDetailsCell(null);
   };
 
-  const handlePreviousWeek = () => {
-    if (currentWeekIndex > 0) {
-      onWeekChange(currentWeekIndex - 1);
-    }
-  };
-
-  const handleNextWeek = () => {
-    if (currentWeekIndex < weeks.length - 1) {
-      onWeekChange(currentWeekIndex + 1);
-    }
-  };
-
   const handleEditDateClick = () => {
     const date = new Date(currentWeek.startDate);
     const year = date.getFullYear();
@@ -263,7 +250,23 @@ export const Schedule: React.FC<ScheduleProps> = ({
     try {
       // Create a clone of the schedule element
       const clone = scheduleRef.current.cloneNode(true) as HTMLElement;
-      clone.style.width = '1200px'; // Fixed width for better quality
+      
+      // Remove sticky positioning and scrolling constraints for PDF export
+      const tableContainer = clone.querySelector('.MuiTableContainer-root') as HTMLElement;
+      if (tableContainer) {
+        tableContainer.style.maxHeight = 'none';
+        tableContainer.style.overflow = 'visible';
+      }
+      
+      // Remove sticky positioning from cells
+      const stickyCells = clone.querySelectorAll('[style*="position: sticky"]');
+      stickyCells.forEach(cell => {
+        (cell as HTMLElement).style.position = 'static';
+        (cell as HTMLElement).style.zIndex = 'auto';
+      });
+      
+      // Set fixed width for better quality
+      clone.style.width = '1200px';
       clone.style.position = 'absolute';
       clone.style.left = '0';
       clone.style.top = '0';
@@ -384,20 +387,57 @@ export const Schedule: React.FC<ScheduleProps> = ({
       <Legend pillars={pillars} />
 
       <div ref={scheduleRef}>
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            maxHeight: '70vh',
+            overflow: 'auto'
+          }}
+        >
+          <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Time</TableCell>
+                <TableCell 
+                  sx={{ 
+                    borderRight: '1px solid rgba(224, 224, 224, 1)',
+                    backgroundColor: 'background.paper',
+                    position: 'sticky',
+                    left: 0,
+                    zIndex: 2
+                  }}
+                >
+                  Time
+                </TableCell>
                 {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
-                  <TableCell key={day}>{day}</TableCell>
+                  <TableCell 
+                    key={day} 
+                    sx={{ 
+                      borderRight: '1px solid rgba(224, 224, 224, 1)',
+                      backgroundColor: 'background.paper',
+                      '&:last-child': {
+                        borderRight: 'none'
+                      }
+                    }}
+                  >
+                    {day}
+                  </TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((hour) => (
                 <TableRow key={hour}>
-                  <TableCell>{hour}</TableCell>
+                  <TableCell 
+                    sx={{ 
+                      borderRight: '1px solid rgba(224, 224, 224, 1)',
+                      position: 'sticky',
+                      left: 0,
+                      backgroundColor: 'background.paper',
+                      zIndex: 1
+                    }}
+                  >
+                    {hour}
+                  </TableCell>
                   {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
                     const activity = getActivityForCell(day, hour);
                     return (
@@ -408,6 +448,10 @@ export const Schedule: React.FC<ScheduleProps> = ({
                           cursor: 'pointer',
                           backgroundColor: activity?.color || 'inherit',
                           color: activity ? getContrastColor(activity.color) : 'inherit',
+                          borderRight: '1px solid rgba(224, 224, 224, 1)',
+                          '&:last-child': {
+                            borderRight: 'none'
+                          },
                           '&:hover': {
                             opacity: 0.8,
                           },

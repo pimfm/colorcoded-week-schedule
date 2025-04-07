@@ -49,14 +49,25 @@ function App() {
   });
 
   const createEmptySchedule = () => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return {
-      timeSlots: Array.from({ length: 24 }, (_, i) => ({
-        hour: i,
-        activities: Object.fromEntries(days.map(day => [day, ''])),
-      })),
-      days,
-    };
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const hours = Array.from({ length: 24 }, (_, i) => 
+      `${String(i).padStart(2, '0')}:00`
+    );
+    
+    const schedule: WeekSchedule = {};
+    
+    // Initialize each day with empty time slots
+    days.forEach(day => {
+      schedule[day] = {};
+      hours.forEach(hour => {
+        schedule[day][hour] = {
+          activityId: null,
+          endTime: null
+        };
+      });
+    });
+    
+    return schedule;
   };
 
   const [scheduleState, setScheduleState] = useState<ScheduleState>(() => {
