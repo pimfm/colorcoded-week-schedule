@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Container, Box, Tabs, Tab } from '@mui/material';
+import { Container, Box, Tabs, Tab, Button } from '@mui/material';
 import { PillarManager } from './components/PillarManager';
 import { Schedule } from './components/Schedule';
-import { Pillar, WeekSchedule } from './types';
+import { Pillar, WeekSchedule, Week, ScheduleState } from './types';
 
 function App() {
   const [pillars, setPillars] = useState<Pillar[]>(() => {
@@ -48,17 +48,54 @@ function App() {
     ];
   });
 
-  const [schedule, setSchedule] = useState<WeekSchedule>(() => {
-    const savedSchedule = localStorage.getItem('schedule');
-    if (savedSchedule) {
-      return JSON.parse(savedSchedule);
-    }
+  const createEmptySchedule = () => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const timeSlots = Array.from({ length: 24 }, (_, i) => ({
-      hour: i,
-      activities: Object.fromEntries(days.map(day => [day, ''])),
-    }));
-    return { timeSlots, days };
+    return {
+      timeSlots: Array.from({ length: 24 }, (_, i) => ({
+        hour: i,
+        activities: Object.fromEntries(days.map(day => [day, ''])),
+      })),
+      days,
+    };
+  };
+
+  const [scheduleState, setScheduleState] = useState<ScheduleState>(() => {
+    try {
+      const savedSchedule = localStorage.getItem('schedule');
+      if (savedSchedule) {
+        const parsed = JSON.parse(savedSchedule);
+        // Validate the parsed data
+        if (parsed && Array.isArray(parsed.weeks) && parsed.weeks.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved schedule:', error);
+    }
+
+    // Create initial two weeks if no valid saved data
+    const today = new Date();
+    const week1Start = new Date(today);
+    week1Start.setDate(today.getDate() - today.getDay() + 1); // Start from Monday
+
+    const week2Start = new Date(week1Start);
+    week2Start.setDate(week1Start.getDate() + 7);
+
+    return {
+      weeks: [
+        {
+          id: '1',
+          startDate: week1Start.toISOString(),
+          schedule: createEmptySchedule(),
+        },
+        {
+          id: '2',
+          startDate: week2Start.toISOString(),
+          schedule: createEmptySchedule(),
+        },
+      ],
+      currentWeekIndex: 0,
+    };
   });
 
   const [activeTab, setActiveTab] = useState(0);
@@ -68,8 +105,45 @@ function App() {
   }, [pillars]);
 
   useEffect(() => {
-    localStorage.setItem('schedule', JSON.stringify(schedule));
-  }, [schedule]);
+    localStorage.setItem('schedule', JSON.stringify(scheduleState));
+  }, [scheduleState]);
+
+  const handleAddWeek = () => {
+    const lastWeek = scheduleState.weeks[scheduleState.weeks.length - 1];
+    const lastWeekStart = new Date(lastWeek.startDate);
+    const newWeekStart = new Date(lastWeekStart);
+    newWeekStart.setDate(lastWeekStart.getDate() + 7);
+
+    setScheduleState(prev => ({
+      ...prev,
+      weeks: [
+        ...prev.weeks,
+        {
+          id: Date.now().toString(),
+          startDate: newWeekStart.toISOString(),
+          schedule: createEmptySchedule(),
+        },
+      ],
+    }));
+  };
+
+  const handleWeekChange = (index: number) => {
+    if (index >= 0 && index < scheduleState.weeks.length) {
+      setScheduleState(prev => ({
+        ...prev,
+        currentWeekIndex: index,
+      }));
+    }
+  };
+
+  const handleScheduleChange = (weekId: string, newSchedule: WeekSchedule) => {
+    setScheduleState(prev => ({
+      ...prev,
+      weeks: prev.weeks.map(week =>
+        week.id === weekId ? { ...week, schedule: newSchedule } : week
+      ),
+    }));
+  };
 
   return (
     <Container maxWidth="xl">
@@ -84,11 +158,20 @@ function App() {
         </Tabs>
 
         {activeTab === 0 && (
-          <Schedule
-            pillars={pillars}
-            schedule={schedule}
-            onScheduleChange={setSchedule}
-          />
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button variant="contained" onClick={handleAddWeek}>
+                Add Week
+              </Button>
+            </Box>
+            <Schedule
+              pillars={pillars}
+              weeks={scheduleState.weeks}
+              currentWeekIndex={scheduleState.currentWeekIndex}
+              onWeekChange={handleWeekChange}
+              onScheduleChange={handleScheduleChange}
+            />
+          </>
         )}
         {activeTab === 1 && (
           <PillarManager

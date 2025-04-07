@@ -19,4 +19,15 @@ export interface TimeSlot {
 export interface WeekSchedule {
   timeSlots: TimeSlot[];
   days: string[];
+}
+
+export interface Week {
+  id: string;
+  startDate: string; // ISO date string
+  schedule: WeekSchedule;
+}
+
+export interface ScheduleState {
+  weeks: Week[];
+  currentWeekIndex: number;
 } 
