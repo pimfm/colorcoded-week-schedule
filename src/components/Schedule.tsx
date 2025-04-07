@@ -306,9 +306,16 @@ export const Schedule: React.FC<ScheduleProps> = ({
           <IconButton onClick={() => onWeekChange(currentWeekIndex - 1)} disabled={currentWeekIndex === 0}>
             <ChevronLeft />
           </IconButton>
-          <Typography variant="h6">
-            Week {currentWeekIndex + 1} ({formatDate(currentWeek.startDate)})
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6">
+              Week {currentWeekIndex + 1} ({formatDate(currentWeek.startDate)})
+            </Typography>
+            <Tooltip title="Edit Week Start Date">
+              <IconButton onClick={handleEditDateClick} size="small">
+                <Edit />
+              </IconButton>
+            </Tooltip>
+          </Box>
           <IconButton onClick={() => onWeekChange(currentWeekIndex + 1)} disabled={currentWeekIndex === weeks.length - 1}>
             <ChevronRight />
           </IconButton>
@@ -461,6 +468,29 @@ export const Schedule: React.FC<ScheduleProps> = ({
             Delete
           </Button>
           <Button onClick={() => setDetailsCell(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Date Dialog */}
+      <Dialog open={isEditDateDialogOpen} onClose={() => setIsEditDateDialogOpen(false)}>
+        <DialogTitle>Edit Week Start Date</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Week Start Date"
+            type="date"
+            fullWidth
+            value={editingWeekDate}
+            onChange={(e) => setEditingWeekDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsEditDateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpdateDate} variant="contained">Update Date</Button>
         </DialogActions>
       </Dialog>
     </Box>
