@@ -22,6 +22,7 @@ import { Pillar, Activity, WeekSchedule, Week } from '../types';
 import { ChevronLeft, ChevronRight, PictureAsPdf, Edit } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { Legend } from './Legend';
 
 interface ScheduleProps {
   pillars: Pillar[];
@@ -237,6 +238,8 @@ export const Schedule: React.FC<ScheduleProps> = ({
         </Box>
       </Box>
 
+      <Legend pillars={pillars} />
+
       <div ref={scheduleRef}>
         <TableContainer component={Paper}>
           <Table>
@@ -266,9 +269,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
                             opacity: 0.8,
                           },
                         }}
-                      >
-                        {activity?.name || ''}
-                      </TableCell>
+                      />
                     );
                   })}
                 </TableRow>
