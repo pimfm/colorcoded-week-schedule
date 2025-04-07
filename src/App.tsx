@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Container, Box, Tabs, Tab, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { PillarManager } from './components/PillarManager';
 import { Schedule } from './components/Schedule';
-import { Pillar, WeekSchedule, Week, ScheduleState } from './types';
+import { Pillar, WeekSchedule, ScheduleState } from './types';
 
 function App() {
   const [pillars, setPillars] = useState<Pillar[]>(() => {
