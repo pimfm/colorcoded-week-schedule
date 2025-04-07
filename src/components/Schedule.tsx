@@ -16,9 +16,10 @@ import {
   Button,
   IconButton,
   Tooltip,
+  TextField,
 } from '@mui/material';
 import { Pillar, Activity, WeekSchedule, Week } from '../types';
-import { ChevronLeft, ChevronRight, PictureAsPdf } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, PictureAsPdf, Edit } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
@@ -28,6 +29,7 @@ interface ScheduleProps {
   currentWeekIndex: number;
   onWeekChange: (index: number) => void;
   onScheduleChange: (weekId: string, schedule: WeekSchedule) => void;
+  onUpdateWeekDate: (weekId: string, newDate: string) => void;
 }
 
 export const Schedule: React.FC<ScheduleProps> = ({
@@ -36,11 +38,14 @@ export const Schedule: React.FC<ScheduleProps> = ({
   currentWeekIndex = 0,
   onWeekChange,
   onScheduleChange,
+  onUpdateWeekDate,
 }) => {
   const [selectedCell, setSelectedCell] = useState<{
     hour: number;
     day: string;
   } | null>(null);
+  const [isEditDateDialogOpen, setIsEditDateDialogOpen] = useState(false);
+  const [editingWeekDate, setEditingWeekDate] = useState('');
   const scheduleRef = React.useRef<HTMLDivElement>(null);
 
   // Ensure we have valid weeks data
@@ -110,6 +115,22 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const handleNextWeek = () => {
     if (currentWeekIndex < weeks.length - 1) {
       onWeekChange(currentWeekIndex + 1);
+    }
+  };
+
+  const handleEditDateClick = () => {
+    const date = new Date(currentWeek.startDate);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setEditingWeekDate(`${year}-${month}-${day}`);
+    setIsEditDateDialogOpen(true);
+  };
+
+  const handleUpdateDate = () => {
+    if (editingWeekDate) {
+      onUpdateWeekDate(currentWeek.id, editingWeekDate);
+      setIsEditDateDialogOpen(false);
     }
   };
 
@@ -187,9 +208,16 @@ export const Schedule: React.FC<ScheduleProps> = ({
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4">
-          Week {currentWeekIndex + 1} ({formatDate(currentWeek.startDate)})
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h4">
+            Week {currentWeekIndex + 1} ({formatDate(currentWeek.startDate)})
+          </Typography>
+          <Tooltip title="Edit Week Start Date">
+            <IconButton onClick={handleEditDateClick} size="small">
+              <Edit />
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Previous Week">
             <IconButton onClick={handlePreviousWeek} disabled={currentWeekIndex === 0}>
@@ -290,6 +318,29 @@ export const Schedule: React.FC<ScheduleProps> = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSelectedCell(null)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Date Dialog */}
+      <Dialog open={isEditDateDialogOpen} onClose={() => setIsEditDateDialogOpen(false)}>
+        <DialogTitle>Edit Week Start Date</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Week Start Date"
+            type="date"
+            fullWidth
+            value={editingWeekDate}
+            onChange={(e) => setEditingWeekDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsEditDateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpdateDate} variant="contained">Update Date</Button>
         </DialogActions>
       </Dialog>
     </Box>

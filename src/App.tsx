@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Container, Box, Tabs, Tab, Button } from '@mui/material';
+import { Container, Box, Tabs, Tab, Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from '@mui/material';
 import { PillarManager } from './components/PillarManager';
 import { Schedule } from './components/Schedule';
 import { Pillar, WeekSchedule, Week, ScheduleState } from './types';
@@ -99,6 +99,8 @@ function App() {
   });
 
   const [activeTab, setActiveTab] = useState(0);
+  const [isAddWeekDialogOpen, setIsAddWeekDialogOpen] = useState(false);
+  const [newWeekDate, setNewWeekDate] = useState('');
 
   useEffect(() => {
     localStorage.setItem('pillars', JSON.stringify(pillars));
@@ -108,23 +110,40 @@ function App() {
     localStorage.setItem('schedule', JSON.stringify(scheduleState));
   }, [scheduleState]);
 
-  const handleAddWeek = () => {
+  const handleOpenAddWeekDialog = () => {
+    // Set default date to next Monday after the last week
     const lastWeek = scheduleState.weeks[scheduleState.weeks.length - 1];
     const lastWeekStart = new Date(lastWeek.startDate);
-    const newWeekStart = new Date(lastWeekStart);
-    newWeekStart.setDate(lastWeekStart.getDate() + 7);
+    const nextMonday = new Date(lastWeekStart);
+    nextMonday.setDate(lastWeekStart.getDate() + 7);
+    
+    // Format date as YYYY-MM-DD for the date input
+    const year = nextMonday.getFullYear();
+    const month = String(nextMonday.getMonth() + 1).padStart(2, '0');
+    const day = String(nextMonday.getDate()).padStart(2, '0');
+    setNewWeekDate(`${year}-${month}-${day}`);
+    
+    setIsAddWeekDialogOpen(true);
+  };
 
+  const handleAddWeek = () => {
+    if (!newWeekDate) return;
+    
+    const selectedDate = new Date(newWeekDate);
+    
     setScheduleState(prev => ({
       ...prev,
       weeks: [
         ...prev.weeks,
         {
           id: Date.now().toString(),
-          startDate: newWeekStart.toISOString(),
+          startDate: selectedDate.toISOString(),
           schedule: createEmptySchedule(),
         },
       ],
     }));
+    
+    setIsAddWeekDialogOpen(false);
   };
 
   const handleWeekChange = (index: number) => {
@@ -145,6 +164,15 @@ function App() {
     }));
   };
 
+  const handleUpdateWeekDate = (weekId: string, newDate: string) => {
+    setScheduleState(prev => ({
+      ...prev,
+      weeks: prev.weeks.map(week =>
+        week.id === weekId ? { ...week, startDate: new Date(newDate).toISOString() } : week
+      ),
+    }));
+  };
+
   return (
     <Container maxWidth="xl">
       <Box sx={{ width: '100%', mt: 4 }}>
@@ -160,7 +188,7 @@ function App() {
         {activeTab === 0 && (
           <>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" onClick={handleAddWeek}>
+              <Button variant="contained" onClick={handleOpenAddWeekDialog}>
                 Add Week
               </Button>
             </Box>
@@ -170,6 +198,7 @@ function App() {
               currentWeekIndex={scheduleState.currentWeekIndex}
               onWeekChange={handleWeekChange}
               onScheduleChange={handleScheduleChange}
+              onUpdateWeekDate={handleUpdateWeekDate}
             />
           </>
         )}
@@ -180,6 +209,29 @@ function App() {
           />
         )}
       </Box>
+
+      {/* Add Week Dialog */}
+      <Dialog open={isAddWeekDialogOpen} onClose={() => setIsAddWeekDialogOpen(false)}>
+        <DialogTitle>Add New Week</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Week Start Date"
+            type="date"
+            fullWidth
+            value={newWeekDate}
+            onChange={(e) => setNewWeekDate(e.target.value)}
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsAddWeekDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleAddWeek} variant="contained">Add Week</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
