@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
 import {
   Box,
+  Paper,
+  Typography,
+  TextField,
   Button,
-  Card,
-  CardContent,
+  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Typography,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
+  Grid,
+  Tooltip,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { HexColorPicker } from 'react-colorful';
+import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { Pillar, Activity } from '../types';
 
 interface PillarManagerProps {
@@ -30,10 +26,14 @@ export const PillarManager: React.FC<PillarManagerProps> = ({
   onPillarsChange,
 }) => {
   const [newPillarName, setNewPillarName] = useState('');
+  const [editingPillar, setEditingPillar] = useState<Pillar | null>(null);
+  const [editingActivity, setEditingActivity] = useState<{
+    pillarId: string;
+    activity: Activity;
+  } | null>(null);
   const [newActivityName, setNewActivityName] = useState('');
-  const [selectedPillarId, setSelectedPillarId] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState('#000000');
-  const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [newActivityColor, setNewActivityColor] = useState('#000000');
+  const [hexColorInput, setHexColorInput] = useState('');
 
   const handleAddPillar = () => {
     if (newPillarName.trim()) {
@@ -47,158 +47,317 @@ export const PillarManager: React.FC<PillarManagerProps> = ({
     }
   };
 
+  const handleDeletePillar = (pillarId: string) => {
+    onPillarsChange(pillars.filter((p) => p.id !== pillarId));
+  };
+
+  const handleEditPillar = (pillar: Pillar) => {
+    setEditingPillar(pillar);
+  };
+
+  const handleSavePillarEdit = () => {
+    if (editingPillar) {
+      onPillarsChange(
+        pillars.map((p) =>
+          p.id === editingPillar.id ? { ...p, name: editingPillar.name } : p
+        )
+      );
+      setEditingPillar(null);
+    }
+  };
+
   const handleAddActivity = (pillarId: string) => {
     if (newActivityName.trim()) {
       const newActivity: Activity = {
         id: Date.now().toString(),
         name: newActivityName.trim(),
-        color: selectedColor,
+        color: newActivityColor,
         pillarId,
       };
-      const updatedPillars = pillars.map((pillar) =>
-        pillar.id === pillarId
-          ? { ...pillar, activities: [...pillar.activities, newActivity] }
-          : pillar
+      onPillarsChange(
+        pillars.map((p) =>
+          p.id === pillarId
+            ? { ...p, activities: [...p.activities, newActivity] }
+            : p
+        )
       );
-      onPillarsChange(updatedPillars);
       setNewActivityName('');
-      setIsColorPickerOpen(false);
+      setNewActivityColor('#000000');
     }
   };
 
-  const handleDeletePillar = (pillarId: string) => {
-    onPillarsChange(pillars.filter((pillar) => pillar.id !== pillarId));
+  const handleDeleteActivity = (pillarId: string, activityId: string) => {
+    onPillarsChange(
+      pillars.map((p) =>
+        p.id === pillarId
+          ? {
+              ...p,
+              activities: p.activities.filter((a) => a.id !== activityId),
+            }
+          : p
+      )
+    );
   };
 
-  const handleDeleteActivity = (pillarId: string, activityId: string) => {
-    const updatedPillars = pillars.map((pillar) =>
-      pillar.id === pillarId
-        ? {
-            ...pillar,
-            activities: pillar.activities.filter((activity) => activity.id !== activityId),
-          }
-        : pillar
-    );
-    onPillarsChange(updatedPillars);
+  const handleEditActivity = (pillarId: string, activity: Activity) => {
+    setEditingActivity({ pillarId, activity });
+    setNewActivityName(activity.name);
+    setNewActivityColor(activity.color);
+    setHexColorInput(activity.color);
+  };
+
+  const handleSaveActivityEdit = () => {
+    if (editingActivity) {
+      const updatedActivity: Activity = {
+        ...editingActivity.activity,
+        name: newActivityName.trim(),
+        color: newActivityColor,
+      };
+      onPillarsChange(
+        pillars.map((p) =>
+          p.id === editingActivity.pillarId
+            ? {
+                ...p,
+                activities: p.activities.map((a) =>
+                  a.id === editingActivity.activity.id ? updatedActivity : a
+                ),
+              }
+            : p
+        )
+      );
+      setEditingActivity(null);
+      setNewActivityName('');
+      setNewActivityColor('#000000');
+      setHexColorInput('');
+    }
+  };
+
+  const handleColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNewActivityColor(event.target.value);
+    setHexColorInput(event.target.value);
+  };
+
+  const handleHexColorChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setHexColorInput(value);
+    
+    // Only update the color if it's a valid hex color
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setNewActivityColor(value);
+    }
+  };
+
+  const handleHexColorBlur = () => {
+    // If the hex input is invalid, reset it to the current color
+    if (!/^#[0-9A-Fa-f]{6}$/.test(hexColorInput)) {
+      setHexColorInput(newActivityColor);
+    }
   };
 
   return (
-    <Box sx={{ maxWidth: 800, margin: '0 auto', p: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Manage Pillars and Activities
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h5" gutterBottom>
+        Manage Pillars & Activities
       </Typography>
 
-      {/* Add new pillar */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
+      {/* Add New Pillar */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Add New Pillar
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <TextField
+            label="Pillar Name"
+            value={newPillarName}
+            onChange={(e) => setNewPillarName(e.target.value)}
+            fullWidth
+          />
+          <Button
+            variant="contained"
+            onClick={handleAddPillar}
+            disabled={!newPillarName.trim()}
+          >
+            Add Pillar
+          </Button>
+        </Box>
+      </Paper>
+
+      {/* Pillars List */}
+      {pillars.map((pillar) => (
+        <Paper key={pillar.id} sx={{ p: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">{pillar.name}</Typography>
+            <Box>
+              <Tooltip title="Edit Pillar">
+                <IconButton onClick={() => handleEditPillar(pillar)} size="small">
+                  <EditIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Delete Pillar">
+                <IconButton onClick={() => handleDeletePillar(pillar.id)} size="small" color="error">
+                  <DeleteIcon />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          {/* Add New Activity */}
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <TextField
-              label="New Pillar Name"
-              value={newPillarName}
-              onChange={(e) => setNewPillarName(e.target.value)}
+              label="Activity Name"
+              value={newActivityName}
+              onChange={(e) => setNewActivityName(e.target.value)}
               fullWidth
             />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <input
+                type="color"
+                value={newActivityColor}
+                onChange={handleColorChange}
+                style={{ width: '50px', height: '40px', padding: 0, border: 'none' }}
+              />
+              <TextField
+                label="Hex Color"
+                value={hexColorInput}
+                onChange={handleHexColorChange}
+                onBlur={handleHexColorBlur}
+                size="small"
+                sx={{ width: '100px' }}
+                placeholder="#000000"
+              />
+            </Box>
             <Button
               variant="contained"
-              onClick={handleAddPillar}
-              startIcon={<AddIcon />}
+              onClick={() => handleAddActivity(pillar.id)}
+              disabled={!newActivityName.trim()}
             >
-              Add Pillar
+              Add Activity
             </Button>
           </Box>
-        </CardContent>
-      </Card>
 
-      {/* List of pillars */}
-      {pillars.map((pillar) => (
-        <Card key={pillar.id} sx={{ mb: 2 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-              <Typography variant="h6">{pillar.name}</Typography>
-              <IconButton
-                onClick={() => handleDeletePillar(pillar.id)}
-                color="error"
-              >
-                <DeleteIcon />
-              </IconButton>
-            </Box>
-
-            {/* Add new activity */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <TextField
-                label="New Activity Name"
-                value={newActivityName}
-                onChange={(e) => setNewActivityName(e.target.value)}
-                fullWidth
-              />
-              <Button
-                variant="outlined"
-                onClick={() => {
-                  setSelectedPillarId(pillar.id);
-                  setIsColorPickerOpen(true);
-                }}
-              >
-                Pick Color
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => handleAddActivity(pillar.id)}
-                startIcon={<AddIcon />}
-              >
-                Add Activity
-              </Button>
-            </Box>
-
-            {/* List of activities */}
-            <List>
-              {pillar.activities.map((activity) => (
-                <ListItem key={activity.id}>
-                  <Box
-                    sx={{
-                      width: 20,
-                      height: 20,
-                      backgroundColor: activity.color,
-                      mr: 2,
-                      borderRadius: 1,
-                    }}
-                  />
-                  <ListItemText primary={activity.name} />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleDeleteActivity(pillar.id, activity.id)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          </CardContent>
-        </Card>
+          {/* Activities List */}
+          <Grid container spacing={1}>
+            {pillar.activities.map((activity) => (
+              <Grid item xs={12} sm={6} md={4} key={activity.id}>
+                <Paper
+                  sx={{
+                    p: 1,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    backgroundColor: activity.color,
+                    color: getContrastColor(activity.color),
+                  }}
+                >
+                  <Typography>{activity.name}</Typography>
+                  <Box>
+                    <Tooltip title="Edit Activity">
+                      <IconButton
+                        onClick={() => handleEditActivity(pillar.id, activity)}
+                        size="small"
+                        sx={{ color: getContrastColor(activity.color) }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Activity">
+                      <IconButton
+                        onClick={() => handleDeleteActivity(pillar.id, activity.id)}
+                        size="small"
+                        sx={{ color: getContrastColor(activity.color) }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Paper>
       ))}
 
-      {/* Color picker dialog */}
-      <Dialog open={isColorPickerOpen} onClose={() => setIsColorPickerOpen(false)}>
-        <DialogTitle>Pick a color for the activity</DialogTitle>
+      {/* Edit Pillar Dialog */}
+      <Dialog open={!!editingPillar} onClose={() => setEditingPillar(null)}>
+        <DialogTitle>Edit Pillar</DialogTitle>
         <DialogContent>
-          <HexColorPicker color={selectedColor} onChange={setSelectedColor} />
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Pillar Name"
+            fullWidth
+            value={editingPillar?.name || ''}
+            onChange={(e) =>
+              setEditingPillar(
+                editingPillar
+                  ? { ...editingPillar, name: e.target.value }
+                  : null
+              )
+            }
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsColorPickerOpen(false)}>Cancel</Button>
-          <Button
-            onClick={() => {
-              if (selectedPillarId) {
-                handleAddActivity(selectedPillarId);
-              }
-            }}
-            variant="contained"
-          >
-            Confirm
+          <Button onClick={() => setEditingPillar(null)}>Cancel</Button>
+          <Button onClick={handleSavePillarEdit} variant="contained">
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Activity Dialog */}
+      <Dialog open={!!editingActivity} onClose={() => setEditingActivity(null)}>
+        <DialogTitle>Edit Activity</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Activity Name"
+            fullWidth
+            value={newActivityName}
+            onChange={(e) => setNewActivityName(e.target.value)}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 2 }}>
+            <input
+              type="color"
+              value={newActivityColor}
+              onChange={handleColorChange}
+              style={{ width: '50px', height: '40px', padding: 0, border: 'none' }}
+            />
+            <TextField
+              label="Hex Color"
+              value={hexColorInput}
+              onChange={handleHexColorChange}
+              onBlur={handleHexColorBlur}
+              size="small"
+              sx={{ width: '100px' }}
+              placeholder="#000000"
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditingActivity(null)}>Cancel</Button>
+          <Button onClick={handleSaveActivityEdit} variant="contained">
+            Save
           </Button>
         </DialogActions>
       </Dialog>
     </Box>
   );
+};
+
+// Helper function to determine text color based on background color
+const getContrastColor = (hexColor: string): string => {
+  // Remove the # if present
+  const color = hexColor.replace('#', '');
+  
+  // Convert to RGB
+  const r = parseInt(color.substr(0, 2), 16);
+  const g = parseInt(color.substr(2, 2), 16);
+  const b = parseInt(color.substr(4, 2), 16);
+  
+  // Calculate luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return black or white based on luminance
+  return luminance > 0.5 ? '#000000' : '#FFFFFF';
 }; 
