@@ -19,9 +19,10 @@ import {
   TextField,
   FormControlLabel,
   Checkbox,
+  Link,
 } from '@mui/material';
 import { Pillar, Activity, WeekSchedule, Week } from '../types';
-import { ChevronLeft, ChevronRight, PictureAsPdf, Edit, Delete as DeleteIcon } from '@mui/icons-material';
+import { ChevronLeft, ChevronRight, PictureAsPdf, Edit, Delete as DeleteIcon, GitHub } from '@mui/icons-material';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Legend } from './Legend';
@@ -259,20 +260,61 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const handleExportPDF = async () => {
     if (!scheduleRef.current) return;
 
-    const canvas = await html2canvas(scheduleRef.current, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
+    try {
+      // Create a clone of the schedule element
+      const clone = scheduleRef.current.cloneNode(true) as HTMLElement;
+      clone.style.width = '1200px'; // Fixed width for better quality
+      clone.style.position = 'absolute';
+      clone.style.left = '0';
+      clone.style.top = '0';
+      document.body.appendChild(clone);
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('l', 'mm', 'a4');
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      // Create PDF with landscape orientation
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [1200, 800] // Fixed size to match the clone width
+      });
 
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`schedule-week-${currentWeekIndex + 1}.pdf`);
+      // Get the full height of the schedule
+      const fullHeight = clone.offsetHeight;
+      const pageHeight = 800; // Height of one PDF page
+      const totalPages = Math.ceil(fullHeight / pageHeight);
+
+      // For each page
+      for (let i = 0; i < totalPages; i++) {
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        // Create a canvas for this page
+        const canvas = await html2canvas(clone, {
+          scale: 2, // Higher scale for better quality
+          width: 1200,
+          height: Math.min(pageHeight, fullHeight - (i * pageHeight)),
+          windowWidth: 1200,
+          windowHeight: Math.min(pageHeight, fullHeight - (i * pageHeight)),
+          x: 0,
+          y: i * pageHeight,
+          scrollY: -i * pageHeight,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        // Add the canvas to the PDF
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        pdf.addImage(imgData, 'JPEG', 0, 0, 1200, Math.min(pageHeight, fullHeight - (i * pageHeight)));
+      }
+
+      // Clean up
+      document.body.removeChild(clone);
+
+      // Save the PDF
+      pdf.save(`schedule-week-${currentWeekIndex + 1}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -493,6 +535,40 @@ export const Schedule: React.FC<ScheduleProps> = ({
           <Button onClick={handleUpdateDate} variant="contained">Update Date</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Footer with GitHub link */}
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          mt: 4, 
+          mb: 2,
+          py: 2,
+          borderTop: '1px solid #eaeaea'
+        }}
+      >
+        <Link 
+          href="https://github.com/pimfm/colorcoded-week-schedule" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            textDecoration: 'none',
+            color: 'text.secondary',
+            '&:hover': {
+              color: 'primary.main',
+            }
+          }}
+        >
+          <GitHub fontSize="small" />
+          <Typography variant="body2">
+            View on GitHub
+          </Typography>
+        </Link>
+      </Box>
     </Box>
   );
 }; 
