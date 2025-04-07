@@ -116,20 +116,63 @@ export const Schedule: React.FC<ScheduleProps> = ({
   const handleExportPDF = async () => {
     if (!scheduleRef.current) return;
 
-    const canvas = await html2canvas(scheduleRef.current, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
+    // Create a clone of the schedule element for PDF generation
+    const clone = scheduleRef.current.cloneNode(true) as HTMLElement;
+    clone.style.width = '1000px'; // Set a fixed width for better scaling
+    document.body.appendChild(clone);
+    
+    try {
+      const canvas = await html2canvas(clone, {
+        scale: 1.5,
+        useCORS: true,
+        logging: false,
+        width: 1000,
+        height: clone.scrollHeight,
+        windowWidth: 1000,
+        windowHeight: clone.scrollHeight,
+      });
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('l', 'mm', 'a4');
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`schedule-week-${currentWeekIndex + 1}.pdf`);
+      // If the content is too tall for a single page, split it into multiple pages
+      const maxHeight = pdf.internal.pageSize.getHeight();
+      const pageCount = Math.ceil(pdfHeight / maxHeight);
+      
+      for (let i = 0; i < pageCount; i++) {
+        if (i > 0) {
+          pdf.addPage();
+        }
+        
+        const sourceY = i * maxHeight * (imgProps.height / pdfHeight);
+        const sourceHeight = Math.min(maxHeight * (imgProps.height / pdfHeight), imgProps.height - sourceY);
+        
+        // Create a new canvas for each page
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sourceHeight;
+        const ctx = pageCanvas.getContext('2d');
+        
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, sourceY, canvas.width, sourceHeight,
+            0, 0, canvas.width, sourceHeight
+          );
+          
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          pdf.addImage(pageImgData, 'PNG', 0, 0, pdfWidth, (sourceHeight * pdfWidth) / imgProps.width);
+        }
+      }
+      
+      pdf.save(`schedule-week-${currentWeekIndex + 1}.pdf`);
+    } finally {
+      // Clean up the clone
+      document.body.removeChild(clone);
+    }
   };
 
   const formatDate = (dateString: string) => {
