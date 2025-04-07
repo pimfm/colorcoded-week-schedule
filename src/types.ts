@@ -12,18 +12,19 @@ export interface Pillar {
 }
 
 export interface TimeSlot {
-  hour: number;
-  activities: { [day: string]: string }; // day -> activityId
+  activityId: string | null;
+  endTime: string | null; // Format: "HH:mm"
 }
 
 export interface WeekSchedule {
-  timeSlots: TimeSlot[];
-  days: string[];
+  [day: string]: {
+    [hour: string]: TimeSlot;
+  };
 }
 
 export interface Week {
   id: string;
-  startDate: string; // ISO date string
+  startDate: string;
   schedule: WeekSchedule;
 }
 
