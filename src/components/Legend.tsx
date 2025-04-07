@@ -15,46 +15,75 @@ export const Legend: React.FC<LegendProps> = ({ pillars }) => {
   const handleExportPDF = async () => {
     if (!legendRef.current) return;
 
-    // Create a clone of the legend element for PDF generation
-    const clone = legendRef.current.cloneNode(true) as HTMLElement;
-    clone.style.width = '800px'; // Set a fixed width for better scaling
-    document.body.appendChild(clone);
-    
     try {
+      // Create a clone of the legend element for PDF generation
+      const clone = legendRef.current.cloneNode(true) as HTMLElement;
+      
+      // Remove the PDF export button from the clone
+      const exportButton = clone.querySelector('button');
+      if (exportButton) {
+        exportButton.remove();
+      }
+
+      // Force the clone to display pillars in a single column for PDF
+      const pillarsContainer = clone.querySelector('[data-legend-pillars]');
+      if (pillarsContainer) {
+        (pillarsContainer as HTMLElement).style.display = 'flex';
+        (pillarsContainer as HTMLElement).style.flexDirection = 'column';
+        (pillarsContainer as HTMLElement).style.width = '100%';
+      }
+
+      const pillarBoxes = clone.querySelectorAll('[data-legend-pillar]');
+      pillarBoxes.forEach((box) => {
+        (box as HTMLElement).style.width = '100%';
+      });
+      
+      // Set a fixed width for better scaling
+      clone.style.width = '600px';
+      clone.style.position = 'absolute';
+      clone.style.left = '0';
+      clone.style.top = '0';
+      document.body.appendChild(clone);
+      
+      // Create PDF with portrait orientation
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Create a canvas for the entire content
       const canvas = await html2canvas(clone, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         logging: false,
-        width: 800,
-        height: clone.scrollHeight,
-        windowWidth: 800,
-        windowHeight: clone.scrollHeight,
+        backgroundColor: '#ffffff'
       });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
+      
       // Add padding to the PDF (20mm on each side)
       const padding = 20;
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       const contentWidth = pdfWidth - (padding * 2);
-      const contentHeight = (pdfHeight * contentWidth) / pdfWidth;
+      const contentHeight = Math.min(
+        (canvas.height * contentWidth) / canvas.width,
+        pdfHeight - (padding * 2)
+      );
       
+      // Add the canvas to the PDF
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       pdf.addImage(
         imgData, 
-        'PNG', 
+        'JPEG', 
         padding, 
         padding, 
         contentWidth, 
         contentHeight
       );
       
-      pdf.save('legend.pdf');
-    } finally {
-      // Clean up the clone
+      // Clean up
       document.body.removeChild(clone);
+      
+      // Save the PDF
+      pdf.save('legend.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
     }
   };
 
@@ -71,9 +100,23 @@ export const Legend: React.FC<LegendProps> = ({ pillars }) => {
         </Tooltip>
       </Box>
       <div ref={legendRef}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box 
+          data-legend-pillars
+          sx={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: 2 
+          }}
+        >
           {pillars.map((pillar) => (
-            <Box key={pillar.id} sx={{ width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(25% - 16px)' }, mb: 2 }}>
+            <Box 
+              key={pillar.id} 
+              data-legend-pillar
+              sx={{ 
+                width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(25% - 16px)' }, 
+                mb: 2 
+              }}
+            >
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 {pillar.name}
               </Typography>
