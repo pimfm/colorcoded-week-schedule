@@ -10,10 +10,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid,
   Tooltip,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { Pillar, Activity } from '../types';
 
 interface PillarManagerProps {
@@ -236,44 +235,45 @@ export const PillarManager: React.FC<PillarManagerProps> = ({
           </Box>
 
           {/* Activities List */}
-          <Grid container spacing={1}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             {pillar.activities.map((activity) => (
-              <Grid item xs={12} sm={6} md={4} key={activity.id}>
-                <Paper
-                  sx={{
-                    p: 1,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    backgroundColor: activity.color,
-                    color: getContrastColor(activity.color),
-                  }}
-                >
-                  <Typography>{activity.name}</Typography>
-                  <Box>
-                    <Tooltip title="Edit Activity">
-                      <IconButton
-                        onClick={() => handleEditActivity(pillar.id, activity)}
-                        size="small"
-                        sx={{ color: getContrastColor(activity.color) }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Activity">
-                      <IconButton
-                        onClick={() => handleDeleteActivity(pillar.id, activity.id)}
-                        size="small"
-                        sx={{ color: getContrastColor(activity.color) }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </Paper>
-              </Grid>
+              <Box 
+                key={activity.id} 
+                sx={{ 
+                  width: { xs: '100%', sm: 'calc(50% - 8px)', md: 'calc(33.33% - 8px)' },
+                  p: 1,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: activity.color,
+                  color: getContrastColor(activity.color),
+                  borderRadius: 1,
+                }}
+              >
+                <Typography>{activity.name}</Typography>
+                <Box>
+                  <Tooltip title="Edit Activity">
+                    <IconButton
+                      onClick={() => handleEditActivity(pillar.id, activity)}
+                      size="small"
+                      sx={{ color: getContrastColor(activity.color) }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete Activity">
+                    <IconButton
+                      onClick={() => handleDeleteActivity(pillar.id, activity.id)}
+                      size="small"
+                      sx={{ color: getContrastColor(activity.color) }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Paper>
       ))}
 

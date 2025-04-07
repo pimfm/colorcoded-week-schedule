@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Box, Paper, Typography, Grid, IconButton, Tooltip } from '@mui/material';
+import { Box, Paper, Typography, IconButton, Tooltip } from '@mui/material';
 import { PictureAsPdf } from '@mui/icons-material';
 import { Pillar } from '../types';
 import html2canvas from 'html2canvas';
@@ -71,39 +71,37 @@ export const Legend: React.FC<LegendProps> = ({ pillars }) => {
         </Tooltip>
       </Box>
       <div ref={legendRef}>
-        <Grid container spacing={2}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
           {pillars.map((pillar) => (
-            <Grid item xs={12} sm={6} md={3} key={pillar.id}>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  {pillar.name}
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {pillar.activities.map((activity) => (
+            <Box key={pillar.id} sx={{ width: { xs: '100%', sm: 'calc(50% - 16px)', md: 'calc(25% - 16px)' }, mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                {pillar.name}
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {pillar.activities.map((activity) => (
+                  <Box
+                    key={activity.id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
                     <Box
-                      key={activity.id}
                       sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
+                        width: 20,
+                        height: 20,
+                        backgroundColor: activity.color,
+                        borderRadius: '4px',
                       }}
-                    >
-                      <Box
-                        sx={{
-                          width: 20,
-                          height: 20,
-                          backgroundColor: activity.color,
-                          borderRadius: '4px',
-                        }}
-                      />
-                      <Typography variant="body2">{activity.name}</Typography>
-                    </Box>
-                  ))}
-                </Box>
+                    />
+                    <Typography variant="body2">{activity.name}</Typography>
+                  </Box>
+                ))}
               </Box>
-            </Grid>
+            </Box>
           ))}
-        </Grid>
+        </Box>
       </div>
     </Paper>
   );
