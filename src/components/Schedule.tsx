@@ -17,6 +17,8 @@ import {
   IconButton,
   Tooltip,
   TextField,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import { Pillar, Activity, WeekSchedule, Week } from '../types';
 import { ChevronLeft, ChevronRight, PictureAsPdf, Edit, Delete as DeleteIcon } from '@mui/icons-material';
@@ -55,6 +57,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
     hour: string;
     activity: Activity;
   } | null>(null);
+  const [showCellText, setShowCellText] = useState<boolean>(true);
   const scheduleRef = useRef<HTMLDivElement>(null);
 
   // Ensure we have valid weeks data
@@ -292,31 +295,36 @@ export const Schedule: React.FC<ScheduleProps> = ({
     return null;
   };
 
+  const handleToggleCellText = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setShowCellText(event.target.checked);
+  };
+
   return (
-    <Box sx={{ p: 2 }}>
+    <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="h4">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <IconButton onClick={() => onWeekChange(currentWeekIndex - 1)} disabled={currentWeekIndex === 0}>
+            <ChevronLeft />
+          </IconButton>
+          <Typography variant="h6">
             Week {currentWeekIndex + 1} ({formatDate(currentWeek.startDate)})
           </Typography>
-          <Tooltip title="Edit Week Start Date">
-            <IconButton onClick={handleEditDateClick} size="small">
-              <Edit />
-            </IconButton>
-          </Tooltip>
+          <IconButton onClick={() => onWeekChange(currentWeekIndex + 1)} disabled={currentWeekIndex === weeks.length - 1}>
+            <ChevronRight />
+          </IconButton>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Previous Week">
-            <IconButton onClick={handlePreviousWeek} disabled={currentWeekIndex === 0}>
-              <ChevronLeft />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Next Week">
-            <IconButton onClick={handleNextWeek} disabled={currentWeekIndex === weeks.length - 1}>
-              <ChevronRight />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Export PDF">
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <FormControlLabel
+            control={
+              <Checkbox 
+                checked={showCellText} 
+                onChange={handleToggleCellText} 
+                color="primary" 
+              />
+            }
+            label="Show Activity Names"
+          />
+          <Tooltip title="Export as PDF">
             <IconButton onClick={handleExportPDF}>
               <PictureAsPdf />
             </IconButton>
@@ -356,7 +364,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
                           },
                         }}
                       >
-                        {activity?.name || ''}
+                        {showCellText && activity?.name || ''}
                       </TableCell>
                     );
                   })}
@@ -453,29 +461,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
             Delete
           </Button>
           <Button onClick={() => setDetailsCell(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Date Dialog */}
-      <Dialog open={isEditDateDialogOpen} onClose={() => setIsEditDateDialogOpen(false)}>
-        <DialogTitle>Edit Week Start Date</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Week Start Date"
-            type="date"
-            fullWidth
-            value={editingWeekDate}
-            onChange={(e) => setEditingWeekDate(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsEditDateDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleUpdateDate} variant="contained">Update Date</Button>
         </DialogActions>
       </Dialog>
     </Box>
