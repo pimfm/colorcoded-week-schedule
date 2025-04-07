@@ -92,101 +92,88 @@ export const Schedule: React.FC<ScheduleProps> = ({
     );
   }
 
-  const handleCellClick = (day: string, hour: string) => {
-    // Check if the cell already has an activity
-    const existingActivity = getActivityForCell(day, hour);
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const hours = Array.from({ length: 48 }, (_, i) => {
+    const hour = Math.floor(i / 2);
+    const minutes = i % 2 === 0 ? '00' : '30';
+    return `${String(hour).padStart(2, '0')}:${minutes}`;
+  });
+
+  const getActivityForCell = (day: string, hour: string) => {
+    const timeSlot = currentWeek.schedule[day]?.[hour];
+    if (!timeSlot?.activityId) return null;
     
-    if (existingActivity) {
-      // If the cell has an activity, show the details dialog
-      setDetailsCell({ day, hour, activity: existingActivity });
-    } else {
-      // If the cell is empty, open the activity selection dialog
-      setSelectedCell({ day, hour });
-      
-      // Set default end time to 1 hour after the selected time
-      const hourNum = parseInt(hour);
-      const nextHour = (hourNum + 1) % 24;
-      const defaultEndTime = `${nextHour.toString().padStart(2, '0')}:00`;
-      setEndTime(defaultEndTime);
+    for (const pillar of pillars) {
+      const activity = pillar.activities.find(a => a.id === timeSlot.activityId);
+      if (activity) return activity;
     }
+    return null;
+  };
+
+  const handleCellClick = (day: string, hour: string) => {
+    setSelectedCell({ day, hour });
+    setEndTime(hour); // Set initial end time to the selected hour
+    setSelectedActivity(null);
   };
 
   const handleActivitySelect = (activity: Activity) => {
-    setSelectedActivity(activity);
-    
-    // Save immediately when an activity is selected
-    if (selectedCell) {
-      const startHour = parseInt(selectedCell.hour);
-      const endHour = endTime ? parseInt(endTime.split(':')[0]) : startHour + 1;
+    if (!selectedCell) return;
+
+    const startHourIndex = hours.indexOf(selectedCell.hour);
+    const endHourIndex = hours.indexOf(endTime);
+
+    if (startHourIndex > -1 && endHourIndex > -1) {
+      const updatedSchedule = { ...currentWeek.schedule };
       
-      // Create a new schedule object
-      const newSchedule = { ...currentWeek.schedule };
-      
-      // Initialize the day if it doesn't exist
-      if (!newSchedule[selectedCell.day]) {
-        newSchedule[selectedCell.day] = {};
-      }
-      
-      // Determine if we need to span to the next day
-      const spansToNextDay = endHour <= startHour;
-      
-      // Get the next day
-      const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(selectedCell.day);
-      const nextDayIndex = (dayIndex + 1) % 7;
-      const nextDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][nextDayIndex];
-      
-      // Initialize the next day if it doesn't exist
-      if (spansToNextDay && !newSchedule[nextDay]) {
-        newSchedule[nextDay] = {};
-      }
-      
-      // Fill the time slots
-      if (spansToNextDay) {
-        // Fill from start hour to end of day
-        for (let hour = startHour; hour < 24; hour++) {
-          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-          
-          // Only fill if the cell is empty
-          if (!newSchedule[selectedCell.day][hourStr]?.activityId) {
-            newSchedule[selectedCell.day][hourStr] = {
-              activityId: activity.id,
-              endTime: null,
-            };
-          }
+      // Check if the activity spans to the next day
+      if (endHourIndex < startHourIndex) {
+        // Get the next day
+        const currentDayIndex = days.indexOf(selectedCell.day);
+        const nextDayIndex = (currentDayIndex + 1) % days.length;
+        const nextDay = days[nextDayIndex];
+
+        // Initialize days if they don't exist
+        if (!updatedSchedule[selectedCell.day]) {
+          updatedSchedule[selectedCell.day] = {};
         }
-        
-        // Fill from start of next day to end hour
-        for (let hour = 0; hour < endHour; hour++) {
-          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-          
-          // Only fill if the cell is empty
-          if (!newSchedule[nextDay][hourStr]?.activityId) {
-            newSchedule[nextDay][hourStr] = {
-              activityId: activity.id,
-              endTime: hour === endHour - 1 ? endTime : null,
-            };
-          }
+        if (!updatedSchedule[nextDay]) {
+          updatedSchedule[nextDay] = {};
+        }
+
+        // Fill current day from start time until midnight
+        for (let i = startHourIndex; i < hours.length; i++) {
+          updatedSchedule[selectedCell.day][hours[i]] = {
+            activityId: activity.id,
+            endTime: endTime
+          };
+        }
+
+        // Fill next day from midnight until end time
+        for (let i = 0; i <= endHourIndex; i++) {
+          updatedSchedule[nextDay][hours[i]] = {
+            activityId: activity.id,
+            endTime: endTime
+          };
         }
       } else {
         // Normal case - fill within the same day
-        for (let hour = startHour; hour < endHour; hour++) {
-          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
-          
-          // Only fill if the cell is empty
-          if (!newSchedule[selectedCell.day][hourStr]?.activityId) {
-            newSchedule[selectedCell.day][hourStr] = {
-              activityId: activity.id,
-              endTime: hour === endHour - 1 ? endTime : null,
-            };
-          }
+        if (!updatedSchedule[selectedCell.day]) {
+          updatedSchedule[selectedCell.day] = {};
+        }
+        
+        for (let i = Math.min(startHourIndex, endHourIndex); i <= Math.max(startHourIndex, endHourIndex); i++) {
+          updatedSchedule[selectedCell.day][hours[i]] = {
+            activityId: activity.id,
+            endTime: endTime
+          };
         }
       }
 
-      onScheduleChange(currentWeek.id, newSchedule);
-      setSelectedCell(null);
-      setSelectedActivity(null);
-      setEndTime('');
+      onScheduleChange(currentWeek.id, updatedSchedule);
     }
+
+    setSelectedCell(null);
+    setSelectedActivity(null);
   };
 
   const handleEndTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -329,17 +316,6 @@ export const Schedule: React.FC<ScheduleProps> = ({
     });
   };
 
-  const getActivityForCell = (day: string, hour: string) => {
-    const timeSlot = currentWeek.schedule[day]?.[hour];
-    if (!timeSlot?.activityId) return null;
-
-    for (const pillar of pillars) {
-      const activity = pillar.activities.find(a => a.id === timeSlot.activityId);
-      if (activity) return activity;
-    }
-    return null;
-  };
-
   const handleToggleCellText = (event: React.ChangeEvent<HTMLInputElement>) => {
     setShowCellText(event.target.checked);
   };
@@ -403,12 +379,13 @@ export const Schedule: React.FC<ScheduleProps> = ({
                     backgroundColor: 'background.paper',
                     position: 'sticky',
                     left: 0,
-                    zIndex: 2
+                    zIndex: 2,
+                    minWidth: '80px'
                   }}
                 >
                   Time
                 </TableCell>
-                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                {days.map((day) => (
                   <TableCell 
                     key={day} 
                     sx={{ 
@@ -425,7 +402,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((hour) => (
+              {hours.map((hour) => (
                 <TableRow key={hour}>
                   <TableCell 
                     sx={{ 
@@ -433,12 +410,13 @@ export const Schedule: React.FC<ScheduleProps> = ({
                       position: 'sticky',
                       left: 0,
                       backgroundColor: 'background.paper',
-                      zIndex: 1
+                      zIndex: 1,
+                      minWidth: '80px'
                     }}
                   >
                     {hour}
                   </TableCell>
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+                  {days.map((day) => {
                     const activity = getActivityForCell(day, hour);
                     return (
                       <TableCell
