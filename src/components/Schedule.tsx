@@ -115,7 +115,7 @@ export const Schedule: React.FC<ScheduleProps> = ({
     if (selectedCell) {
       const startHour = parseInt(selectedCell.hour);
       const endHour = endTime ? parseInt(endTime.split(':')[0]) : startHour + 1;
-
+      
       // Create a new schedule object
       const newSchedule = { ...currentWeek.schedule };
       
@@ -123,17 +123,59 @@ export const Schedule: React.FC<ScheduleProps> = ({
       if (!newSchedule[selectedCell.day]) {
         newSchedule[selectedCell.day] = {};
       }
-
+      
+      // Determine if we need to span to the next day
+      const spansToNextDay = endHour <= startHour;
+      
+      // Get the next day
+      const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(selectedCell.day);
+      const nextDayIndex = (dayIndex + 1) % 7;
+      const nextDay = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][nextDayIndex];
+      
+      // Initialize the next day if it doesn't exist
+      if (spansToNextDay && !newSchedule[nextDay]) {
+        newSchedule[nextDay] = {};
+      }
+      
       // Fill the time slots
-      for (let hour = startHour; hour < endHour; hour++) {
-        const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+      if (spansToNextDay) {
+        // Fill from start hour to end of day
+        for (let hour = startHour; hour < 24; hour++) {
+          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+          
+          // Only fill if the cell is empty
+          if (!newSchedule[selectedCell.day][hourStr]?.activityId) {
+            newSchedule[selectedCell.day][hourStr] = {
+              activityId: activity.id,
+              endTime: null,
+            };
+          }
+        }
         
-        // Only fill if the cell is empty
-        if (!newSchedule[selectedCell.day][hourStr]?.activityId) {
-          newSchedule[selectedCell.day][hourStr] = {
-            activityId: activity.id,
-            endTime: hour === endHour - 1 ? endTime : null,
-          };
+        // Fill from start of next day to end hour
+        for (let hour = 0; hour < endHour; hour++) {
+          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+          
+          // Only fill if the cell is empty
+          if (!newSchedule[nextDay][hourStr]?.activityId) {
+            newSchedule[nextDay][hourStr] = {
+              activityId: activity.id,
+              endTime: hour === endHour - 1 ? endTime : null,
+            };
+          }
+        }
+      } else {
+        // Normal case - fill within the same day
+        for (let hour = startHour; hour < endHour; hour++) {
+          const hourStr = `${hour.toString().padStart(2, '0')}:00`;
+          
+          // Only fill if the cell is empty
+          if (!newSchedule[selectedCell.day][hourStr]?.activityId) {
+            newSchedule[selectedCell.day][hourStr] = {
+              activityId: activity.id,
+              endTime: hour === endHour - 1 ? endTime : null,
+            };
+          }
         }
       }
 
